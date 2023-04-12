@@ -7,27 +7,23 @@ use chumsky::{
     Parser,
 };
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Token {
-    True,
-    False,
-    StmtEnd,
+fn bool_parser<'a, I: ValueInput<'a, Token = char, Span = SimpleSpan>>(
+) -> impl Parser<'a, I, char, extra::Err<Simple<'a, char>>> {
+    just('t').or(just('f'))
 }
 
-fn bool_parser<'a, I: ValueInput<'a, Token = Token, Span = SimpleSpan>>(
-) -> impl Parser<'a, I, Token, extra::Err<Simple<'a, Token>>> {
-    just(Token::True).or(just(Token::False))
+fn stmt_parser<'a, I: ValueInput<'a, Token = char, Span = SimpleSpan>>(
+) -> impl Parser<'a, I, char, extra::Err<Simple<'a, char>>> {
+    bool_parser().then_ignore(just(';'))
 }
 
-fn stmt_parser<'a, I: ValueInput<'a, Token = Token, Span = SimpleSpan>>(
-) -> impl Parser<'a, I, Token, extra::Err<Simple<'a, Token>>> {
-    bool_parser().then_ignore(just(Token::StmtEnd))
-}
-
-fn main() {
-    let tokens = [(Token::False, SimpleSpan::new(0, 5))];
-    let input_length = 5;
-    let token_stream = Stream::from_iter(tokens).spanned((input_length..input_length).into());
+fn parse_str(input: &str) {
+    let input_length = input.len();
+    let chars = input
+        .chars()
+        .enumerate()
+        .map(|(i, c)| (c, SimpleSpan::new(i, i + 1)));
+    let token_stream = Stream::from_iter(chars).spanned((input_length..input_length).into());
 
     let res = stmt_parser().parse(token_stream).into_result();
     match res {
@@ -38,4 +34,15 @@ fn main() {
             }
         }
     }
+}
+
+fn main() {
+    // The parser expects either "f;" or "t;"
+    // we make it error by intentionally omitting ';'
+    println!("Correct error");
+    // Prints "Found end of input"
+    parse_str("t");
+    println!("Incorrect error");
+    // Prints "Found 'f'"
+    parse_str("f");
 }
